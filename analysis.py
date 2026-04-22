@@ -188,113 +188,32 @@ def score_stock(d):
     bd = {}
     red_flags = []
 
-    # --- Momentum (max 30) ---
-    m   = 0
-    rsi = d.get("rsi") or 0
-    if 55 <= rsi <= 72:    m += 15
-    elif 40 <= rsi < 55:   m += 8
-    elif rsi > 72:         m += 5
-    elif rsi < 30:         m += 2
-    else:                  m += 4
+    # --- Trend (max 18) — most important for 1-week holds ---
+    t        = 0
+    above50  = d.get("above_50ma")
+    above200 = d.get("above_200ma")
+    if above50  is True:    t += 9
+    elif above50 is False:  t -= 5
+    if above200 is True:    t += 9
+    elif above200 is False: t -= 5
 
-    chg = d.get("change_pct", 0)
-    if chg >= 5:    m += 10
-    elif chg >= 2:  m += 7
-    elif chg >= 0:  m += 3
-    elif chg >= -2: m += 1
+    prox = d.get("week52_proximity_pct")
+    if prox is not None:
+        if prox <= 5:    t += 2
+        elif prox <= 15: t += 1
+        elif prox >= 50:
+            t -= 4
+            red_flags.append("More than 50% below 52W high")
 
-    gap = d.get("gap_pct", 0)
-    if gap >= 3:   m += 5
-    elif gap >= 1: m += 3
-    elif gap < -2: m -= 3
+    bd["trend"] = max(min(t, 18), -10)
 
-    vol_ratio = d.get("vol_ratio") or 1
-    if chg < 0 and vol_ratio < 1:
-        m -= 5
-        red_flags.append("Selling on above-avg volume")
-
-    bd["momentum"] = max(min(m, 30), 0)
-
-    # --- MACD (max 12) ---
-    macd_score = 0
-    macd = d.get("macd") or {}
-    if macd:
-        if macd.get("crossover") == "bullish":
-            macd_score += 10
-        elif macd.get("crossover") == "bearish":
-            macd_score -= 8
-            red_flags.append("MACD bearish crossover")
-        elif macd.get("trending_up"):
-            macd_score += 5
-        else:
-            macd_score += 0
-
-        hist_val = macd.get("histogram", 0)
-        if hist_val > 0 and macd.get("trending_up"):
-            macd_score += 2   # histogram expanding bullish
-    bd["macd"] = max(min(macd_score, 12), -8)
-
-    # --- Bollinger Bands (max 10) ---
-    bb_score = 0
-    bb = d.get("bollinger") or {}
-    if bb:
-        pct_b = bb.get("percent_b", 0.5)
-        squeeze = bb.get("squeeze", False)
-
-        if pct_b <= 0.15:
-            # price near/at lower band — oversold, potential bounce
-            bb_score += 8
-        elif pct_b <= 0.30:
-            bb_score += 5
-        elif pct_b >= 1.0:
-            # breakout above upper band with volume = continuation signal
-            rvol = d.get("rvol") or 1
-            if rvol >= 1.5:
-                bb_score += 7
-            else:
-                bb_score += 2
-                red_flags.append("BB breakout on weak volume")
-        elif pct_b >= 0.85:
-            bb_score += 3
-
-        if squeeze:
-            # tight bands = coiled spring; direction unclear but big move imminent
-            bb_score += 3
-
-    bd["bollinger"] = max(min(bb_score, 10), 0)
-
-    # --- Support/Resistance proximity (max 8) ---
-    sr_score = 0
-    sr = d.get("support_resistance") or {}
-    price = d.get("price", 0)
-    if sr and price:
-        support = sr.get("nearest_support")
-        resist  = sr.get("nearest_resistance")
-        if support:
-            dist_pct = (price - support) / price * 100
-            if dist_pct <= 1.5:
-                sr_score += 8   # sitting right on support
-            elif dist_pct <= 3.0:
-                sr_score += 5
-            elif dist_pct <= 5.0:
-                sr_score += 2
-        if resist:
-            dist_pct = (resist - price) / price * 100
-            if dist_pct <= 1.5:
-                sr_score -= 5   # running into resistance
-                red_flags.append("Price approaching key resistance")
-            elif dist_pct <= 3.0:
-                sr_score -= 2
-
-    bd["support_resistance"] = max(min(sr_score, 8), -5)
-
-    # --- RVOL (max 25) ---
+    # --- RVOL (max 18) ---
     rv = d.get("rvol") or 0
-    if rv >= 3:     bd["rvol"] = 25
-    elif rv >= 2:   bd["rvol"] = 18
-    elif rv >= 1.5: bd["rvol"] = 12
-    elif rv >= 1:   bd["rvol"] = 5
-    elif rv >= 0.5: bd["rvol"] = 2
+    if rv >= 3:     bd["rvol"] = 18
+    elif rv >= 2:   bd["rvol"] = 13
+    elif rv >= 1.5: bd["rvol"] = 9
+    elif rv >= 1:   bd["rvol"] = 4
+    elif rv >= 0.5: bd["rvol"] = 1
     else:           bd["rvol"] = 0
 
     # --- Catalyst (max 15) ---
@@ -311,44 +230,111 @@ def score_stock(d):
     elif ins >= 1: c += 2
     bd["catalyst"] = min(c, 15)
 
-    # --- Float (max 10) ---
+    # --- Support/Resistance proximity (max 14) ---
+    sr_score = 0
+    sr    = d.get("support_resistance") or {}
+    price = d.get("price", 0)
+    if sr and price:
+        support = sr.get("nearest_support")
+        resist  = sr.get("nearest_resistance")
+        if support:
+            dist_pct = (price - support) / price * 100
+            if dist_pct <= 1.5:
+                sr_score += 14
+            elif dist_pct <= 3.0:
+                sr_score += 9
+            elif dist_pct <= 5.0:
+                sr_score += 4
+        if resist:
+            dist_pct = (resist - price) / price * 100
+            if dist_pct <= 1.5:
+                sr_score -= 7
+                red_flags.append("Price approaching key resistance")
+            elif dist_pct <= 3.0:
+                sr_score -= 3
+
+    bd["support_resistance"] = max(min(sr_score, 14), -7)
+
+    # --- MACD (max 13) ---
+    macd_score = 0
+    macd = d.get("macd") or {}
+    if macd:
+        if macd.get("crossover") == "bullish":
+            macd_score += 11
+        elif macd.get("crossover") == "bearish":
+            macd_score -= 8
+            red_flags.append("MACD bearish crossover")
+        elif macd.get("trending_up"):
+            macd_score += 6
+
+        hist_val = macd.get("histogram", 0)
+        if hist_val > 0 and macd.get("trending_up"):
+            macd_score += 2
+    bd["macd"] = max(min(macd_score, 13), -8)
+
+    # --- Momentum (max 11) — RSI only; day % de-emphasized ---
+    m   = 0
+    rsi = d.get("rsi") or 0
+    if 55 <= rsi <= 72:   m += 8
+    elif 40 <= rsi < 55:  m += 5
+    elif rsi > 72:        m += 3
+    elif rsi < 30:        m += 1
+    else:                 m += 2
+
+    chg = d.get("change_pct", 0)
+    if chg >= 5:    m += 3
+    elif chg >= 2:  m += 2
+    elif chg >= 0:  m += 1
+
+    vol_ratio = d.get("vol_ratio") or 1
+    if chg < 0 and vol_ratio < 1:
+        m -= 3
+        red_flags.append("Selling on above-avg volume")
+
+    bd["momentum"] = max(min(m, 11), 0)
+
+    # --- Bollinger Bands (max 6) ---
+    bb_score = 0
+    bb = d.get("bollinger") or {}
+    if bb:
+        pct_b  = bb.get("percent_b", 0.5)
+        squeeze = bb.get("squeeze", False)
+        if pct_b <= 0.15:
+            bb_score += 5
+        elif pct_b <= 0.30:
+            bb_score += 3
+        elif pct_b >= 1.0:
+            rvol = d.get("rvol") or 1
+            if rvol >= 1.5:
+                bb_score += 4
+            else:
+                bb_score += 1
+                red_flags.append("BB breakout on weak volume")
+        elif pct_b >= 0.85:
+            bb_score += 2
+        if squeeze:
+            bb_score += 1
+
+    bd["bollinger"] = max(min(bb_score, 6), 0)
+
+    # --- Float (max 3) ---
     fl = (d.get("float_shares") or 0) / 1e6
-    if 0 < fl < 20:  bd["float"] = 10
-    elif fl < 50:    bd["float"] = 7
-    elif fl < 100:   bd["float"] = 4
-    elif fl > 0:     bd["float"] = 1
+    if 0 < fl < 20:  bd["float"] = 3
+    elif fl < 50:    bd["float"] = 2
+    elif fl < 100:   bd["float"] = 1
     else:            bd["float"] = 0
 
-    # --- Trend (max 10) ---
-    t        = 0
-    above50  = d.get("above_50ma")
-    above200 = d.get("above_200ma")
-    if above50  is True:   t += 5
-    elif above50 is False: t -= 3
-    if above200 is True:   t += 5
-    elif above200 is False: t -= 3
-
-    prox = d.get("week52_proximity_pct")
-    if prox is not None:
-        if prox <= 5:    t += 2
-        elif prox <= 15: t += 1
-        elif prox >= 50:
-            t -= 3
-            red_flags.append("More than 50% below 52W high")
-
-    bd["trend"] = max(min(t, 10), -6)
-
-    # --- Short squeeze (max 10) ---
+    # --- Short squeeze (max 2) ---
     sp = d.get("short_pct_float") or 0
     dc = d.get("days_to_cover") or 0
     sq = 0
-    if sp >= 30:   sq += 8
-    elif sp >= 20: sq += 5
-    elif sp >= 10: sq += 2
-    if dc >= 5:    sq += 2
-    bd["squeeze"] = min(sq, 10)
+    if sp >= 30:   sq += 2
+    elif sp >= 20: sq += 1
+    if dc >= 5:    sq += 1
+    bd["squeeze"] = min(sq, 2)
 
     # --- Hard penalties ---
+    gap       = d.get("gap_pct", 0)
     penalties = 0
     if rsi > 80:
         penalties += 5
