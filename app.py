@@ -103,7 +103,7 @@ def scan():
             cache.set(key, d)
         return d
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(fetch, t): t for t in SCAN_UNIVERSE}
         for future in as_completed(futures):
             d = future.result()
