@@ -176,8 +176,8 @@ function renderHero(d) {
   document.getElementById('rRating').textContent = s.rating;
 
   const bd = s.breakdown;
-  const labels = {momentum:'Momentum',rvol:'RVOL',catalyst:'Catalyst',float:'Float',trend:'Trend',squeeze:'Squeeze'};
-  const maxes  = {momentum:30,rvol:25,catalyst:15,float:10,trend:10,squeeze:10};
+  const labels = {momentum:'Momentum',rvol:'RVOL',catalyst:'Catalyst',float:'Float',trend:'Trend',squeeze:'Squeeze',macd:'MACD',bollinger:'Bollinger',support_resistance:'Support/Resistance'};
+  const maxes  = {momentum:30,rvol:25,catalyst:15,float:10,trend:10,squeeze:10,macd:12,bollinger:10,support_resistance:8};
   document.getElementById('rBreakdown').innerHTML = Object.keys(bd).map(k =>
     `<div class="score-pill"><span>${labels[k]}</span>${bd[k]}/${maxes[k]}</div>`
   ).join('');
@@ -434,8 +434,8 @@ function renderRisk(d) {
   ).join('');
 
   const bd = d.score.breakdown;
-  const labels = {momentum:'Momentum (30)',rvol:'Rel Volume (25)',catalyst:'Catalyst (15)',float:'Float (10)',trend:'Trend (10)',squeeze:'Squeeze (10)'};
-  const maxes  = {momentum:30,rvol:25,catalyst:15,float:10,trend:10,squeeze:10};
+  const labels = {momentum:'Momentum (30)',rvol:'Rel Volume (25)',catalyst:'Catalyst (15)',float:'Float (10)',trend:'Trend (10)',squeeze:'Squeeze (10)',macd:'MACD (12)',bollinger:'Bollinger Bands (10)',support_resistance:'Support/Resistance (8)'};
+  const maxes  = {momentum:30,rvol:25,catalyst:15,float:10,trend:10,squeeze:10,macd:12,bollinger:10,support_resistance:8};
   document.getElementById('rScoreDetail').innerHTML = Object.keys(bd).map(k => {
     const pctFill = (bd[k] / maxes[k]) * 100;
     const col = pctFill >= 75 ? 'var(--green)' : pctFill >= 50 ? 'var(--blue)' : 'var(--yellow)';
