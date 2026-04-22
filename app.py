@@ -76,18 +76,16 @@ def analyze():
     return jsonify(result)
 
 
-SCAN_UNIVERSE = [
+_US_UNIVERSE = [
     # US — high-momentum small/mid cap
     "NVDA", "AMD", "TSLA", "MSTR", "COIN", "PLTR", "SMCI", "IONQ", "RKLB",
     "HOOD", "SOFI", "UPST", "AFRM", "DKNG", "CRWD", "SNOW", "DDOG", "NET",
     "PANW", "ZS", "UBER", "DASH", "SQ", "PYPL", "ROKU", "SPOT", "TTD",
     "SHOP", "ABNB", "LYFT", "RIVN", "JOBY", "ACHR", "LUNR", "RDW",
-    # TSX — most liquid momentum names
-    "SHOP.TO", "CSU.TO", "AEM.TO", "WPM.TO", "FNV.TO", "CCO.TO", "NXE.TO",
-    "ARX.TO", "TVE.TO", "MEG.TO", "FM.TO", "HBM.TO", "CLS.TO", "MDA.TO",
-    "DCBO.TO", "WELL.TO", "GUD.TO", "BAM.TO", "ATD.TO", "DOL.TO",
-    "WSP.TO", "GFL.TO", "CAE.TO", "AC.TO", "SU.TO", "CVE.TO",
 ]
+
+# Full TSX scan universe — same list as TSX_TICKERS so they stay in sync
+SCAN_UNIVERSE = _US_UNIVERSE + TSX_TICKERS
 
 
 @app.route("/scan")
